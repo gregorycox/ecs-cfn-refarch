@@ -102,12 +102,15 @@ Parameters:
 
   VpcId:
     Type: String
+    Default: vpc-6d28de15
 
   Subnet1:
     Type: String
+    Default: subnet-6f00b40b
 
   Subnet2:
     Type: String
+    Default: subnet-fc0804d0
 
 Conditions:
   # HasSshKeyName: !Not [ !Equals [!Ref SshKeyName, NoValue] ]
