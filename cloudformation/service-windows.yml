@@ -15,16 +15,16 @@ Mappings:
       # balancer: m3.medium
       # nginx: m3.medium
       web: m3.medium
-  # AWSRegionToAMI: 
+  # AWSRegionToAMI:
   #   ap-southeast-1:
   #     AMIID: "ami-4ef78421"
-  #   eu-west-2: 
+  #   eu-west-2:
   #     AMIID: "ami-8a2c38ee"
   #   eu-west-1:
   #     AMIID: "ami-b9fac0df"
   #   ap-northeast-2:
   #     AMIID: "ami-02c81a6c"
-  #   ap-northeast-1: 
+  #   ap-northeast-1:
   #     AMIID: "ami-1e1f3d79"
   #   sa-east-1:
   #     AMIID: "ami-eb4d2f87"
@@ -44,7 +44,7 @@ Parameters:
     # Type: AWS::EC2::KeyPair::KeyName
     Type: String
     Description: Optional - Name of an existing EC2 KeyPair to enable SSH access to the ECS instances. Set to 'NoValue' if no SSH key is required.
-    Default: NoValue
+    Default: botkitGitlab
   SpotPrice:
     Type: Number
     Description: spot price for spot instances
@@ -97,12 +97,24 @@ Parameters:
     AllowedValues:
       - "yes"
       - "no"
+  VpcId:
+    Type: String
+    Default: vpc-6d28de15
+
+  Subnet1:
+    Type: String
+    Default: subnet-6f00b40b
+
+  Subnet2:
+    Type: String
+    Default: subnet-fc0804d0
+
 
 Conditions:
   HasSshKeyName: !Not [ !Equals [!Ref SshKeyName, NoValue] ]
   SpotOnlyCond: !Not [ !Equals [ !Ref SpotPrice, 0 ] ]
-  UseALBCond: !Equals [ !Ref UseALB, "yes" ] 
-  UseELBCond: !Equals [ !Ref UseALB, "no" ] 
+  UseALBCond: !Equals [ !Ref UseALB, "yes" ]
+  UseELBCond: !Equals [ !Ref UseALB, "no" ]
   UseBuiltInTaskDefinitionCond: !Equals [ !Ref UseBuiltInTaskDefinition, "yes" ]
 
 
@@ -116,7 +128,7 @@ Resources:
       Description: "Lambda function to query latest ECS Windows Container AMI ID"
       Code:
         ZipFile: >
-          
+
           //A sample Lambda function that looks up the latest AMI ID for a given region and architecture.
 
           // Map instance architectures to an AMI name pattern
@@ -130,29 +142,29 @@ Resources:
           };
 
           var aws = require("aws-sdk");
-          
+
           exports.handler = function(event, context) {
-          
+
               console.log("REQUEST RECEIVED:\n" + JSON.stringify(event));
-              
+
               // For Delete requests, immediately send a SUCCESS response.
               if (event.RequestType == "Delete") {
                   sendResponse(event, context, "SUCCESS");
                   return;
               }
-          
+
               var responseStatus = "FAILED";
               var responseData = {};
-          
+
               var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
               var describeImagesParams = {
                   Filters: [{ Name: "name", Values: [archToAMINamePattern[event.ResourceProperties.Architecture]]}],
                   //Owners: [event.ResourceProperties.Architecture == "HVMG2" ? "679593333241" : "amazon"]
                   //Owners: [ ["HVMG2", "WindowsContainer"].indexOf(event.ResourceProperties.Architecture) > -1  ? "679593333241" : "amazon"]
-                    
+
                     Owners: [event.ResourceProperties.Architecture == "HVMG2" ? "679593333241" :  event.ResourceProperties.Architecture == "WindowsContainer" ? "801119661308" : "amazon"]
               };
-          
+
               // Get AMI IDs with the specified name pattern and owner
 
               ec2.describeImages(describeImagesParams, function(err, describeImagesResult) {
@@ -182,10 +194,10 @@ Resources:
           }
 
 
-          // Send response to the pre-signed S3 URL 
+          // Send response to the pre-signed S3 URL
 
           function sendResponse(event, context, responseStatus, responseData) {
-          
+
               var responseBody = JSON.stringify({
                   Status: responseStatus,
                   Reason: "See the details in CloudWatch Log Stream: " + context.logStreamName,
@@ -195,12 +207,12 @@ Resources:
                   LogicalResourceId: event.LogicalResourceId,
                   Data: responseData
               });
-          
+
               console.log("RESPONSE BODY:\n", responseBody);
-          
+
               var https = require("https");
               var url = require("url");
-          
+
               var parsedUrl = url.parse(event.ResponseURL);
               var options = {
                   hostname: parsedUrl.hostname,
@@ -212,26 +224,26 @@ Resources:
                       "content-length": responseBody.length
                   }
               };
-          
+
               console.log("SENDING RESPONSE...\n");
-          
+
               var request = https.request(options, function(response) {
                   console.log("STATUS: " + response.statusCode);
                   console.log("HEADERS: " + JSON.stringify(response.headers));
-                  // Tell AWS Lambda that the function execution is done  
+                  // Tell AWS Lambda that the function execution is done
                   context.done();
               });
-          
+
               request.on("error", function(error) {
                   console.log("sendResponse Error:" + error);
-                  // Tell AWS Lambda that the function execution is done  
+                  // Tell AWS Lambda that the function execution is done
                   context.done();
               });
-            
+
               // write data to request body
               request.write(responseBody);
               request.end();
-          }      
+          }
 
       Handler: "index.handler"
       Runtime: nodejs4.3
@@ -262,7 +274,7 @@ Resources:
         AssumeRolePolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Action: 
+              - Action:
                   - 'sts:AssumeRole'
                 Effect: Allow
                 Principal:
@@ -270,7 +282,7 @@ Resources:
                     - ec2.amazonaws.com
         Path: /
         ManagedPolicyArns:
-            - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'    
+            - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
 
   ECSServiceRole:
     Type: AWS::IAM::Role
@@ -278,7 +290,7 @@ Resources:
         AssumeRolePolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Action: 
+              - Action:
                   - 'sts:AssumeRole'
                 Effect: Allow
                 Principal:
@@ -286,7 +298,7 @@ Resources:
                     - ecs.amazonaws.com
         Path: /
         ManagedPolicyArns:
-            - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole'   
+            - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole'
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -321,90 +333,90 @@ Resources:
 #######################
 #   VPC / infra
 #######################
-  Vpc:
-    Type: AWS::EC2::VPC
-    Properties:
-      Tags: 
-        -
-          Key: Name
-          Value: cfn-vpc
-      CidrBlock: !FindInMap [ VpcCidrs, default, vpc ]
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
+  # Vpc:
+  #   Type: AWS::EC2::VPC
+  #   Properties:
+  #     Tags:
+  #       -
+  #         Key: Name
+  #         Value: cfn-vpc
+  #     CidrBlock: !FindInMap [ VpcCidrs, default, vpc ]
+  #     EnableDnsSupport: true
+  #     EnableDnsHostnames: true
 
-  VPCGWAttach:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref InternetGateway
-      VpcId: !Ref Vpc
+  # VPCGWAttach:
+  #   Type: AWS::EC2::VPCGatewayAttachment
+  #   Properties:
+  #     InternetGatewayId: !Ref InternetGateway
+  #     VpcId: !Ref Vpc
 
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    #Properties:
+  # InternetGateway:
+  #   Type: AWS::EC2::InternetGateway
+  #   #Properties:
 
-  PublicRT:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      Tags:
-        -
-          Key: Name
-          Value: public-rt
-      VpcId: !Ref Vpc
+  # PublicRT:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     Tags:
+  #       -
+  #         Key: Name
+  #         Value: public-rt
+  #     VpcId: !Ref Vpc
 
-  PublicRouteViaIgw:
-    Type: AWS::EC2::Route
-    Properties: 
-      RouteTableId: !Ref PublicRT
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-
-  PublicZoneA:
-    Type: AWS::EC2::Subnet
-    Properties:
-      Tags:
-        -
-          Key: Name
-          Value: pub-zone-a
-      VpcId: !Ref Vpc
-      CidrBlock: !FindInMap [ VpcCidrs, default, pubzonea ]
-      AvailabilityZone: 
-        Fn::Select:
-          - 0 
-          - Fn::GetAZs: ""
-
-  PublicZoneB:
-    Type: AWS::EC2::Subnet
-    Properties:
-      Tags:
-        -
-          Key: Name
-          Value: pub-zone-b
-      VpcId: !Ref Vpc
-      CidrBlock: !FindInMap [ VpcCidrs, default, pubzoneb ]
-      AvailabilityZone: 
-        Fn::Select:
-          - 1 
-          - Fn::GetAZs: ""
+  # PublicRouteViaIgw:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref PublicRT
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     GatewayId: !Ref InternetGateway
 
 
-  PublicZoneARouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PublicRT
-      SubnetId: !Ref PublicZoneA
+  # PublicZoneA:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     Tags:
+  #       -
+  #         Key: Name
+  #         Value: pub-zone-a
+  #     VpcId: !Ref Vpc
+  #     CidrBlock: !FindInMap [ VpcCidrs, default, pubzonea ]
+  #     AvailabilityZone:
+  #       Fn::Select:
+  #         - 0
+  #         - Fn::GetAZs: ""
 
-  PublicZoneBRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PublicRT
-      SubnetId: !Ref PublicZoneB
+  # PublicZoneB:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     Tags:
+  #       -
+  #         Key: Name
+  #         Value: pub-zone-b
+  #     VpcId: !Ref Vpc
+  #     CidrBlock: !FindInMap [ VpcCidrs, default, pubzoneb ]
+  #     AvailabilityZone:
+  #       Fn::Select:
+  #         - 1
+  #         - Fn::GetAZs: ""
+
+
+  # PublicZoneARouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     RouteTableId: !Ref PublicRT
+  #     SubnetId: !Ref PublicZoneA
+
+  # PublicZoneBRouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     RouteTableId: !Ref PublicRT
+  #     SubnetId: !Ref PublicZoneB
 
 
 #####################
-# CloudWatch 
+# CloudWatch
 #####################
-  CloudwatchLogsGroup: 
+  CloudwatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
@@ -423,13 +435,13 @@ Resources:
     Properties:
       GroupDescription: "sg for LoadBalancer"
       #VpcId: !ImportValue {"Fn::Sub" : "${VpcStackName}-VpcId"}
-      VpcId: !Ref Vpc
+      VpcId: !Ref VpcId
   SgEC2:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "sg for ec2"
       #VpcId: !ImportValue {"Fn::Sub" : "${VpcStackName}-VpcId"}
-      VpcId: !Ref Vpc
+      VpcId: !Ref VpcId
 
 
   ingressECS:
@@ -472,7 +484,7 @@ Resources:
 
 #######################
 #   ALB
-#######################   
+#######################
 
   publicALB:
     Condition: UseALBCond
@@ -487,8 +499,8 @@ Resources:
       SecurityGroups:
         - !Ref SgLB
       Subnets:
-        - !Ref PublicZoneA
-        - !Ref PublicZoneB
+        - !Ref Subnet1
+        - !Ref Subnet2
       Tags:
         -
           Key: Name
@@ -525,16 +537,16 @@ Resources:
       Port: 80
       Protocol: HTTP
       Tags:
-        - 
+        -
           Key: Name
-          Value: alb-tg        
+          Value: alb-tg
       UnhealthyThresholdCount: 3
-      VpcId: !Ref Vpc
+      VpcId: !Ref VpcId
 
- 
+
   EC2InstanceProfile:
     Type: "AWS::IAM::InstanceProfile"
-    Properties: 
+    Properties:
       Path: /
       Roles:
         - !Ref ECSServiceRoleForEC2
@@ -561,10 +573,10 @@ Resources:
       BlockDeviceMappings:
         -
           DeviceName: /dev/sda1
-          Ebs: 
+          Ebs:
             VolumeSize: 120
       KeyName:
-        !If 
+        !If
           - HasSshKeyName
           - !Ref SshKeyName
           - !Ref AWS::NoValue
@@ -572,8 +584,8 @@ Resources:
       #RamDiskId: String
       SecurityGroups:
         - !Ref SgEC2
-      SpotPrice: 
-        !If 
+      SpotPrice:
+        !If
           - SpotOnlyCond
           - !Ref SpotPrice
           - !Ref AWS::NoValue
@@ -633,7 +645,7 @@ Resources:
             Add-JobTrigger -Name $jobname -Trigger (New-JobTrigger -AtStartup -RandomDelay 00:1:00)
             # end script
             cfn-init.exe -v -s ${AWS::StackId} -r AWSLC --region ${AWS::Region}
-            cfn-signal.exe -e $lastexitcode --stack ${AWS::StackName} --resource ASGDefault --region ${AWS::Region} 
+            cfn-signal.exe -e $lastexitcode --stack ${AWS::StackName} --resource ASGDefault --region ${AWS::Region}
 
             </powershell>
             <persist>true</persist>
@@ -655,7 +667,7 @@ Resources:
       AvailabilityZones:
         -
           Fn::Select:
-            - 0 
+            - 0
             - Fn::GetAZs: ""
         -
           Fn::Select:
@@ -668,7 +680,7 @@ Resources:
       #InstanceId: String
       LaunchConfigurationName: !Ref ASGLC
       #LoadBalancerNames:
-      #  - 
+      #  -
       MaxSize: 10
       # MetricsCollection:
       #   - MetricsCollection
@@ -677,7 +689,7 @@ Resources:
       #   - NotificationConfigurations
       # PlacementGroup: String
       Tags:
-        - 
+        -
           Key: Name
           #Value: {"Fn::Sub" : "${StackName}-cfn-nginx"}
           Value: !Sub
@@ -685,13 +697,13 @@ Resources:
             - StackName: !Ref AWS::StackName
           PropagateAtLaunch: true
       TargetGroupARNs:
-        !If 
+        !If
           - UseALBCond
           - [ !Ref publicALBTargetGroup ]
           - !Ref AWS::NoValue
       VPCZoneIdentifier:
-        - !Ref PublicZoneA
-        - !Ref PublicZoneB
+        - !Ref Subnet1
+        - !Ref Subnet2
       # UpdatePolicy:
       #   AutoScalingRollingUpdate:
       #     MinInstancesInService: 1
@@ -707,24 +719,24 @@ Resources:
 
   ECSWebTD:
     Type: "AWS::ECS::TaskDefinition"
-    Properties: 
-      ContainerDefinitions: 
-        - 
-          Name: 
+    Properties:
+      ContainerDefinitions:
+        -
+          Name:
             Ref: "AppName"
-          # MountPoints: 
-          #   - 
+          # MountPoints:
+          #   -
           #     SourceVolume: "my-vol"
           #     ContainerPath: "/var/www/my-vol"
           Image: "microsoft/iis"
           Cpu: "512"
-          PortMappings: 
-            - 
+          PortMappings:
+            -
               ContainerPort: 80
                 # Ref: "80"
               HostPort: 0
                 # Ref: "80"
-          EntryPoint: 
+          EntryPoint:
             - "powershell"
             - "-Command"
           Command:
@@ -737,23 +749,23 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs-windows-sample-app
           Essential: "true"
-      # Volumes: 
-      #   - 
-      #     Host: 
+      # Volumes:
+      #   -
+      #     Host:
       #       SourcePath: "/var/lib/docker/vfs/dir/"
-      #     Name: "my-vol"  
+      #     Name: "my-vol"
 
 
   ECSService:
     DependsOn: [publicALB, publicALBTargetGroup, ALBListener]
     Type: "AWS::ECS::Service"
-    Properties: 
+    Properties:
       Cluster: !Ref ECSDefaultCluster
       DeploymentConfiguration:
         MaximumPercent: !Ref MaxPercent
         MinimumHealthyPercent: !Ref MinPercent
       DesiredCount: !Ref ServiceDesiredCount
-      LoadBalancers: 
+      LoadBalancers:
           - ContainerName: !Ref AppName
             ContainerPort: 80
             TargetGroupArn: !Ref publicALBTargetGroup
@@ -773,11 +785,11 @@ Outputs:
         - !GetAZs ""
   VpcId:
     Value:
-      !Ref Vpc
-    Description: The VPC ID of the created VPC  
+      !Ref VpcId
+    Description: The VPC ID of the created VPC
     Export:
-      Name: 
-        "Fn::Sub": 
+      Name:
+        "Fn::Sub":
           - ${StackName}-VpcId
           - StackName: !Ref AWS::StackName
   LoadBalancerURL:
@@ -786,27 +798,27 @@ Outputs:
         - 'http://${LBDNS}'
         -
           LBDNS: !GetAtt publicALB.DNSName
-  ECSServiceName: 
+  ECSServiceName:
     Value: !GetAtt ECSService.Name
 
 
-  PublicZoneA:
+  Subnet1:
     Value:
-      !Ref PublicZoneA
+      !Ref Subnet1
     Description: Public Zone A
     Export:
-      Name: 
-        "Fn::Sub": 
-          - ${StackName}-PublicZoneA
+      Name:
+        "Fn::Sub":
+          - ${StackName}-Subnet1
           - StackName: !Ref AWS::StackName
-  PublicZoneB:
+  Subnet2:
     Value:
-      !Ref PublicZoneB
+      !Ref Subnet2
     Description: Public Zone B
     Export:
-      Name: 
-        "Fn::Sub": 
-          - ${StackName}-PublicZoneB
+      Name:
+        "Fn::Sub":
+          - ${StackName}-Subnet2
           - StackName: !Ref AWS::StackName
 
 
