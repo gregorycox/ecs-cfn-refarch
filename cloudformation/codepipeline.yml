@@ -36,11 +36,11 @@ Parameters:
       Description: >
         Token for the user specified above. (https://github.com/settings/tokens) Skip this if you use CodeCommit.
       # Default: AWS::NoValue
-    
+
 
 Conditions:
-  UseCodeCommit: !Equals [ !Ref UseCodeCommit, "yes" ] 
-  NotUseCodeCommit: !Equals [ !Ref UseCodeCommit, "no" ] 
+  UseCodeCommit: !Equals [ !Ref UseCodeCommit, "yes" ]
+  NotUseCodeCommit: !Equals [ !Ref UseCodeCommit, "no" ]
 
 Resources:
     EcrRepository:
@@ -66,7 +66,7 @@ Resources:
             AssumeRolePolicyDocument:
                 Version: '2012-10-17'
                 Statement:
-                  - Action: 
+                  - Action:
                       - 'sts:AssumeRole'
                     Effect: Allow
                     Principal:
@@ -89,13 +89,13 @@ Resources:
                       - Effect: Allow
                         Resource:
                           - !Sub 'arn:aws:s3:::${BuildArtifactsBucket}/*'
-                        Action: 
+                        Action:
                           - 's3:GetObject'
                           - 's3:GetObjectVersion'
                           - 's3:PutObject'
                       - Effect: Allow
                         Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${EcrRepository}
-                        Action: 
+                        Action:
                           - ecr:GetDownloadUrlForLayer
                           - ecr:BatchGetImage
                           - ecr:BatchCheckLayerAvailability
@@ -105,7 +105,7 @@ Resources:
                           - ecr:CompleteLayerUpload
                       - Effect: Allow
                         Resource: '*'
-                        Action: 
+                        Action:
                           - ecr:GetAuthorizationToken
 
     # CodeBuildProject:
@@ -114,7 +114,7 @@ Resources:
     #         Name: !Sub '${ServiceName}_build'
     #         Artifacts:
     #             Type: CODEPIPELINE
-    #         Environment: 
+    #         Environment:
     #             Type: LINUX_CONTAINER
     #             ComputeType: BUILD_GENERAL1_SMALL
     #             Image: !Sub 'aws/codebuild/${CodeBuildEnvironment}'
@@ -122,7 +122,7 @@ Resources:
     #               - Name: BUILD_OUTPUT_BUCKET
     #                 Value: !Ref BuildArtifactsBucket
     #         ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-    #         Source: 
+    #         Source:
     #             Type: CODEPIPELINE
 
     CodeBuildProject:
@@ -151,7 +151,7 @@ Resources:
             AssumeRolePolicyDocument:
                 Version: '2012-10-17'
                 Statement:
-                  - Action: 
+                  - Action:
                       - 'sts:AssumeRole'
                     Effect: Allow
                     Principal:
@@ -160,7 +160,7 @@ Resources:
             Path: /
             ManagedPolicyArns:
                 - 'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
- 
+
 
     # Integration tests function
     # StartTestsFunctionExecutionRole:
@@ -169,11 +169,11 @@ Resources:
     #     AssumeRolePolicyDocument:
     #       Version: '2012-10-17'
     #       Statement:
-    #         - Action: 
+    #         - Action:
     #             - 'sts:AssumeRole'
     #           Effect: Allow
     #           Principal:
-    #             Service: 
+    #             Service:
     #               - lambda.amazonaws.com
     #     Path: /
     #     Policies:
@@ -200,7 +200,7 @@ Resources:
                 Version: '2012-10-17'
                 Statement:
                     Effect: Allow
-                    Action: 
+                    Action:
                         - 'cloudformation:CreateStack'
                         - 'cloudformation:DescribeStacks'
                         - 'cloudformation:DeleteStack'
@@ -225,7 +225,7 @@ Resources:
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
-            Action: 
+            Action:
               - 'sts:AssumeRole'
             Effect: Allow
             Principal:
@@ -240,11 +240,11 @@ Resources:
             AssumeRolePolicyDocument:
                 Version: '2012-10-17'
                 Statement:
-                  - Action: 
+                  - Action:
                     - 'sts:AssumeRole'
                     Effect: Allow
                     Principal:
-                      Service: 
+                      Service:
                         - codepipeline.amazonaws.com
             Path: /
             ManagedPolicyArns:
@@ -268,19 +268,19 @@ Resources:
 
 
 #
-#  CoePipeline using Github as source                         
+#  CoePipeline using Github as source
 #
     PipelineWithGithub:
         Condition:  NotUseCodeCommit
         Type: AWS::CodePipeline::Pipeline
         Properties:
-            ArtifactStore: 
+            ArtifactStore:
                 Location: !Ref BuildArtifactsBucket
                 Type: S3
             Name: !Sub ${ServiceName}_pipeline
             RoleArn: !GetAtt PipelineExecutionRole.Arn
-            # DisableInboundStageTransitions: 
-            #   - 
+            # DisableInboundStageTransitions:
+            #   -
             #     Reason: "init disabled"
             #     StageName: CreateEnvironments
             Stages:
@@ -350,7 +350,7 @@ Resources:
                         # "DesiredCount": "1",
                         # "Cluster": "${Cluster}",
                         # "TargetGroup": "${TargetGroup}",
-                    
+
                       InputArtifacts:
                         - Name: SourceZip
                         - Name: BuildOutput
@@ -363,7 +363,7 @@ Resources:
                 #         Owner: AWS
                 #         Provider: Manual
                 #         Version: 1
-                #       RunOrder: 1                
+                #       RunOrder: 1
 
                 - Name: ProdCanary
                   Actions:
@@ -392,7 +392,7 @@ Resources:
                             "ServiceDesiredCount": "2",
                             "CanaryDesiredCount": "1",
                             "MaxPercent": "200",
-                            "MinPercent": "100"  
+                            "MinPercent": "100"
                           }
                       InputArtifacts:
                         - Name: SourceZip
@@ -407,7 +407,7 @@ Resources:
                 #         Owner: AWS
                 #         Provider: Manual
                 #         Version: 1
-                #       RunOrder: 1                
+                #       RunOrder: 1
 
                 # - Name: Prod
                 #   Actions:
@@ -434,7 +434,7 @@ Resources:
                 #             "Repository": "${EcrRepository}",
                 #             "ServiceDesiredCount": "2",
                 #             "MaxPercent": "200",
-                #             "MinPercent": "100"                            
+                #             "MinPercent": "100"
                 #           }
                 #       InputArtifacts:
                 #         - Name: SourceZip
@@ -467,13 +467,13 @@ Resources:
                       RunOrder: 1
 
 #
-#  CoePipeline using CodeCommit as source                         
+#  CoePipeline using CodeCommit as source
 #
     PipelineWithCodeCommit:
         Condition:  UseCodeCommit
         Type: AWS::CodePipeline::Pipeline
         Properties:
-            ArtifactStore: 
+            ArtifactStore:
                 Location: !Ref BuildArtifactsBucket
                 Type: S3
             Name: !Sub ${ServiceName}_pipeline
@@ -532,12 +532,12 @@ Resources:
                             "Repository": "${EcrRepository}",
                             "ServiceDesiredCount": "2",
                             "MaxPercent": "200",
-                            "MinPercent": "50"                            
+                            "MinPercent": "50"
                           }
                         # "DesiredCount": "1",
                         # "Cluster": "${Cluster}",
                         # "TargetGroup": "${TargetGroup}",
-                    
+
                       InputArtifacts:
                         - Name: SourceZip
                         - Name: BuildOutput
@@ -551,7 +551,7 @@ Resources:
                 #         Owner: AWS
                 #         Provider: Manual
                 #         Version: 1
-                #       RunOrder: 1                
+                #       RunOrder: 1
 
                 - Name: ProdCanary
                   Actions:
@@ -580,7 +580,7 @@ Resources:
                             "ServiceDesiredCount": "2",
                             "CanaryDesiredCount": "1",
                             "MaxPercent": "200",
-                            "MinPercent": "100"  
+                            "MinPercent": "100"
                           }
                       InputArtifacts:
                         - Name: SourceZip
@@ -595,7 +595,7 @@ Resources:
                 #         Owner: AWS
                 #         Provider: Manual
                 #         Version: 1
-                #       RunOrder: 1                
+                #       RunOrder: 1
 
                 # - Name: Prod
                 #   Actions:
@@ -623,7 +623,7 @@ Resources:
                 #             "ServiceDesiredCount": "2",
                 #             "CanaryDesiredCount": "1",
                 #             "MaxPercent": "200",
-                #             "MinPercent": "100"  
+                #             "MinPercent": "100"
                 #           }
                 #       InputArtifacts:
                 #         - Name: SourceZip
@@ -638,7 +638,7 @@ Resources:
                 #         Owner: AWS
                 #         Provider: Manual
                 #         Version: 1
-                #       RunOrder: 1                
+                #       RunOrder: 1
 
                 - Name: RemoveCanary
                   Actions:
